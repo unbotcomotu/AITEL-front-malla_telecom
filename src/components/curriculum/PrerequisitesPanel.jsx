@@ -1,7 +1,7 @@
 // 📁 components/PrerequisitesPanel.jsx
 import React from 'react';
-import { checkPrerequisites } from '../utils/prerequisiteUtils.js';
-import { PREREQUISITE_TYPES } from '../data/courseData.js';
+import { checkPrerequisites } from '../../utils/prerequisiteUtils.js';
+import { PREREQUISITE_TYPES } from '../../data/courseData.js';
 
 const PrerequisitesPanel = ({ course, courseGrades = {} }) => {
   const prerequisites = course ? checkPrerequisites(course.id, courseGrades) : [];

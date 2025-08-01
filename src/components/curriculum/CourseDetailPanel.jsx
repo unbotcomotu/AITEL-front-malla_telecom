@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import 'reactflow/dist/style.css';
-import { checkPrerequisites, getCourseStatus } from '../utils/prerequisiteUtils.js';
-import PrerequisitesPanel from '../components/PrerequisitesPanel.jsx';
+import { checkPrerequisites, getCourseStatus } from '../../utils/prerequisiteUtils.js';
+import PrerequisitesPanel from './PrerequisitesPanel.jsx';
 const cycleData = {
   'Todos': {
     professors: 'Varios profesores',
