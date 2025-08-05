@@ -5,19 +5,19 @@ const Sidebar = ({ isOpen, onClose, user, currentPath }) => {
   const navigate = useNavigate();
 
   const menuItems = [
-    // Items para estudiantes
-    ...(user?.role !== 'admin' ? [
-      { path: '/curriculum', label: 'Malla Curricular', icon: '🗺️' },
-      { path: '/onboarding', label: 'Configurar Cursos', icon: '⚙️' }
-    ] : []),
-    
-    // Items para administradores
-    ...(user?.role === 'admin' ? [
-      { path: '/admin', label: 'Panel Admin', icon: '👨‍💼' },
-      { path: '/admin/courses', label: 'Gestionar Cursos', icon: '📚' },
-      { path: '/admin/professors', label: 'Gestionar Profesores', icon: '👨‍🏫' }
-    ] : [])
-  ];
+  // Items para estudiantes
+  ...(user?.role !== 'admin' ? [
+    { path: '/curriculum', label: 'Malla Curricular', icon: '🗺️' },
+    { path: '/onboarding', label: 'Configurar Cursos', icon: '⚙️' }
+  ] : []),
+  
+  // Items para administradores - ✅ ACTUALIZADO
+  ...(user?.role === 'admin' ? [
+    { path: '/admin', label: 'Panel Admin', icon: '👨‍💼' },
+    { path: '/admin/system', label: 'Sistema de Cursos', icon: '🎓' },
+    { path: '/admin/professors', label: 'Gestionar Profesores', icon: '👨‍🏫' }
+  ] : [])
+];
 
   const handleNavigate = (path) => {
     navigate(path);

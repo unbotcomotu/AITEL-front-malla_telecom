@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export const AuthContext = createContext();
 
+// ✅ Mantener useAuth solo aquí
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -28,17 +29,17 @@ export const AuthProvider = ({ children }) => {
           setTimeout(() => {
             const mockUser = {
               id: 1,
-              email: 'estudiante@pucp.edu.pe',
-              fullName: 'Juan Pérez García',
+              email: 'admin@pucp.edu.pe', // Cambiar aquí para probar diferentes roles
+              fullName: 'Administrador de Prueba',
               studentCode: '20201234',
-              role: 'student', // Cambiar a 'admin' para probar vistas de admin
-              isFirstLogin: false // Cambiar a true para probar onboarding
+              role: 'student', // 'admin' o 'student'
+              isFirstLogin: false // true para probar onboarding
             };
             console.log('✅ Usuario mock creado:', mockUser);
             setUser(mockUser);
-            setLoading(false); // ✅ CORREGIDO: setLoading DENTRO del setTimeout
+            setLoading(false);
           }, 1000);
-          return; // ✅ CORREGIDO: No ejecutar setLoading(false) aquí
+          return;
         }
 
         // Código original de producción
@@ -59,7 +60,6 @@ export const AuthProvider = ({ children }) => {
         console.error('❌ Error en checkAuth:', error);
         localStorage.removeItem('authToken');
       } finally {
-        // ✅ CORREGIDO: Solo setLoading(false) en producción
         if (!DEV_MODE) {
           setLoading(false);
         }
@@ -70,7 +70,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (credentials) => {
-    // 🔧 DESARROLLO: Simular login exitoso
     if (DEV_MODE) {
       const mockUser = {
         id: 1,
@@ -86,7 +85,6 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     }
 
-    // Código original de producción
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -109,7 +107,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (userData) => {
-    // 🔧 DESARROLLO: Simular registro exitoso
     if (DEV_MODE) {
       const mockUser = {
         id: 1,
@@ -125,7 +122,6 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     }
 
-    // Código original de producción
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',

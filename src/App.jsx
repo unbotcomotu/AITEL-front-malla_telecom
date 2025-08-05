@@ -1,17 +1,30 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext'; // ← CAMBIO: importar useAuth desde AuthContext
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-
-// Importar componentes
+// Importar componentes de autenticación
 import AuthView from './components/auth/AuthView';
-import CurriculumView from './components/curriculum/CurriculumView';
-import AdminDashboard from './components/admin/AdminDashboard';
-import CourseManagement from './components/admin/CourseManagement';
-import ProfessorManagement from './components/admin/ProfessorManagement';
-import StudentOnboarding from './components/student/StudentOnboarding';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+
+// Importar componentes comunes
 import Layout from './components/common/Layout';
+
+// Importar componentes de estudiante
+import CurriculumView from './components/curriculum/CurriculumView';
+import StudentCourseRegistration from './components/student/StudentCourseRegistration';
+
+// Importar componentes de administrador
+import AdminDashboard from './components/admin/AdminDashboard';
+import ProfessorManagement from './components/admin/ProfessorManagement';
+import CourseAdminSystem from './components/admin/CourseAdminSystem';
+
+// Importar los nuevos componentes del sistema de administración
+import CategoriesTab from './components/admin/categories/CategoriesTab';
+import SubcategoriesTab from './components/admin/subcategories/SubcategoriesTab';
+import CoursesTab from './components/admin/courses/CoursesTab';
+import SearchTab from './components/admin/search/SearchTab';
+import CourseScheduleManager from './components/admin/courses/CourseScheduleManager';
+
 
 // Componente principal
 function App() {
@@ -37,12 +50,23 @@ function App() {
               
               {/* Rutas de estudiante */}
               <Route path="curriculum" element={<CurriculumView />} />
-              <Route path="onboarding" element={<StudentOnboarding />} />
+              <Route path="onboarding" element={<StudentCourseRegistration />} />
               
-              {/* Rutas de administrador */}
+              {/* Rutas de administrador principales */}
               <Route path="admin" element={<AdminDashboard />} />
-              <Route path="admin/courses" element={<CourseManagement />} />
               <Route path="admin/professors" element={<ProfessorManagement />} />
+              
+              {/* Sistema de administración de cursos completo */}
+              <Route path="admin/system" element={<CourseAdminSystem />} />
+              
+              {/* Rutas específicas para cada tab del sistema (opcional - para navegación directa) */}
+              <Route path="admin/system/categories" element={<CategoriesTab />} />
+              <Route path="admin/system/subcategories" element={<SubcategoriesTab />} />
+              <Route path="admin/system/courses" element={<CoursesTab />} />
+              <Route path="admin/system/search" element={<SearchTab />} />
+              
+              {/* Ruta para el gestor de horarios (se abre como modal, pero puede ser útil para URLs directas) */}
+              <Route path="admin/system/courses/:courseId/schedules" element={<CourseScheduleManager />} />
             </Route>
             
             {/* Ruta catch-all */}
@@ -83,6 +107,12 @@ function DashboardRedirect() {
             margin: '0 auto 16px'
           }} />
           <p>Cargando usuario...</p>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
         </div>
       </div>
     );
