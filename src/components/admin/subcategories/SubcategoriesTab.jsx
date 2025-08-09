@@ -1,15 +1,6 @@
-import React, { useState } from 'react';
-
-const SubcategoriesTab = ({ selectedCategoryId = 2 }) => {
-  // Datos mock - en producción vendrían del backend basado en selectedCategoryId
-  const [selectedCategory] = useState({
-    id: 2,
-    name: 'Electivo',
-    description: 'Cursos optativos que permiten personalizar la formación académica',
-    color: '#8b5cf6',
-    cycleAssociation: false
-  });
-
+import React, { useState, useEffect } from 'react';
+const SubcategoriesTab = ({ selectedCategory, onSubcategorySelect, onBack }) => {
+  // Mock data para subcategorías
   const [subcategories, setSubcategories] = useState([
     { 
       id: 1, 
@@ -17,8 +8,10 @@ const SubcategoriesTab = ({ selectedCategoryId = 2 }) => {
       description: 'Cursos de desarrollo personal y habilidades blandas para estudiantes de primeros ciclos',
       cycle: 2,
       coursesCount: 8,
-      color: '#8b5cf6',
-      requiredCourses: 1, // Solo necesitas aprobar 1 curso de esta subcategoría
+      color: selectedCategory?.color || '#8b5cf6',
+      requiredCourses: 1,
+      isFrozen: false,
+      isHidden: false,
       createdAt: '2024-01-15'
     },
     { 
@@ -27,8 +20,10 @@ const SubcategoriesTab = ({ selectedCategoryId = 2 }) => {
       description: 'Cursos avanzados de formación humanística y ética profesional',
       cycle: 5,
       coursesCount: 6,
-      color: '#8b5cf6',
+      color: selectedCategory?.color || '#8b5cf6',
       requiredCourses: 1,
+      isFrozen: false,
+      isHidden: false,
       createdAt: '2024-01-20'
     },
     { 
@@ -37,59 +32,116 @@ const SubcategoriesTab = ({ selectedCategoryId = 2 }) => {
       description: 'Cursos especializados en áreas específicas de telecomunicaciones',
       cycle: 8,
       coursesCount: 12,
-      color: '#8b5cf6',
-      requiredCourses: 2, // Necesitas aprobar 2 cursos de esta subcategoría
+      color: selectedCategory?.color || '#8b5cf6',
+      requiredCourses: 2,
+      isFrozen: true,
+      isHidden: false,
       createdAt: '2024-02-01'
     },
     { 
       id: 4, 
       name: 'Electivo de Investigación', 
-      description: 'Cursos orientados a metodología de investigación and desarrollo de tesis',
+      description: 'Cursos orientados a metodología de investigación y desarrollo de tesis',
       cycle: 9,
       coursesCount: 4,
-      color: '#8b5cf6',
+      color: selectedCategory?.color || '#8b5cf6',
       requiredCourses: 1,
+      isFrozen: false,
+      isHidden: true,
       createdAt: '2024-02-10'
     }
   ]);
 
+  // Mock data para cursos
+  const [coursesBySubcategory] = useState({
+    1: [
+      { id: 1, code: 'HUM101', name: 'Motivación y Liderazgo', credits: 3, isActive: true },
+      { id: 2, code: 'HUM102', name: 'Desarrollo de Habilidades Personales', credits: 3, isActive: true },
+      { id: 3, code: 'HUM103', name: 'Ética Profesional', credits: 2, isActive: false }
+    ],
+    2: [
+      { id: 4, code: 'HUM201', name: 'Filosofía de la Tecnología', credits: 3, isActive: true },
+      { id: 5, code: 'HUM202', name: 'Responsabilidad Social', credits: 2, isActive: true }
+    ],
+    3: [
+      { id: 6, code: 'TEL301', name: 'Redes 5G', credits: 4, isActive: true },
+      { id: 7, code: 'TEL302', name: 'IoT Avanzado', credits: 4, isActive: true },
+      { id: 8, code: 'TEL303', name: 'Ciberseguridad en Telecomunicaciones', credits: 3, isActive: false }
+    ],
+    4: [
+      { id: 9, code: 'INV401', name: 'Metodología de Investigación', credits: 3, isActive: true },
+      { id: 10, code: 'INV402', name: 'Seminario de Tesis', credits: 2, isActive: true }
+    ]
+  });
+
+  // Estados del componente
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingSubcategory, setEditingSubcategory] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSubcategoryInfo, setSelectedSubcategoryInfo] = useState(null);
+  
+  // Estados para modales de confirmación
+  const [showFreezeConfirmation, setShowFreezeConfirmation] = useState(null);
+  const [showUnfreezeConfirmation, setShowUnfreezeConfirmation] = useState(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(null);
+  const [confirmationTimer, setConfirmationTimer] = useState(10);
+  const [canConfirm, setCanConfirm] = useState(false);
   
   const [newSubcategory, setNewSubcategory] = useState({
     name: '',
     description: '',
     cycle: 1,
     requiredCourses: 1,
-    color: selectedCategory.color
+    color: selectedCategory?.color || '#8b5cf6',
+    isHidden: false
   });
 
-  // Ciclos disponibles (1-10 típicamente)
-  const availableCycles = Array.from({length: 10}, (_, i) => i + 1);
+  // Timer effect para confirmaciones
+  useEffect(() => {
+    let timer;
+    if ((showFreezeConfirmation || showUnfreezeConfirmation || showDeleteConfirmation) && confirmationTimer > 0) {
+      timer = setTimeout(() => {
+        setConfirmationTimer(confirmationTimer - 1);
+      }, 1000);
+    } else if (confirmationTimer === 0) {
+      setCanConfirm(true);
+    }
+    return () => clearTimeout(timer);
+  }, [showFreezeConfirmation, showUnfreezeConfirmation, showDeleteConfirmation, confirmationTimer]);
 
-  const filteredSubcategories = subcategories.filter(subcategory =>
-    subcategory.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    subcategory.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Funciones auxiliares
+  const resetConfirmationState = () => {
+    setShowFreezeConfirmation(null);
+    setShowUnfreezeConfirmation(null);
+    setShowDeleteConfirmation(null);
+    setConfirmationTimer(10);
+    setCanConfirm(false);
+  };
 
+  const getStatusColor = (subcategory) => {
+    if (subcategory.isFrozen || selectedCategory?.isFrozen) return '#64748b';
+    if (subcategory.isHidden) return '#f59e0b';
+    return subcategory.color;
+  };
+
+  const getStatusIcon = (subcategory) => {
+    if (subcategory.isFrozen || selectedCategory?.isFrozen) return '❄️';
+    if (subcategory.isHidden) return '👁️‍🗨️';
+    return '✅';
+  };
+
+  // Handlers
   const handleAddSubcategory = () => {
     if (newSubcategory.name.trim()) {
       const subcategory = {
         id: Date.now(),
         ...newSubcategory,
         coursesCount: 0,
+        isFrozen: false,
         createdAt: new Date().toISOString().split('T')[0]
       };
       setSubcategories([...subcategories, subcategory]);
-      setNewSubcategory({ 
-        name: '', 
-        description: '', 
-        cycle: 1, 
-        requiredCourses: 1, 
-        color: selectedCategory.color 
-      });
-      setShowAddForm(false);
+      resetForm();
     }
   };
 
@@ -103,43 +155,111 @@ const SubcategoriesTab = ({ selectedCategoryId = 2 }) => {
     setSubcategories(subcategories.map(sub => 
       sub.id === editingSubcategory.id ? { ...newSubcategory, id: editingSubcategory.id } : sub
     ));
-    setEditingSubcategory(null);
-    setNewSubcategory({ 
-      name: '', 
-      description: '', 
-      cycle: 1, 
-      requiredCourses: 1, 
-      color: selectedCategory.color 
-    });
-    setShowAddForm(false);
+    resetForm();
   };
 
-  const handleDeleteSubcategory = (id) => {
-    if (window.confirm('¿Estás seguro de eliminar esta subcategoría? Esta acción no se puede deshacer.')) {
-      setSubcategories(subcategories.filter(sub => sub.id !== id));
+  const handleDeleteSubcategory = (subcategory) => {
+    setShowDeleteConfirmation(subcategory);
+  };
+
+  const confirmDeleteSubcategory = () => {
+    setSubcategories(subcategories.filter(sub => sub.id !== showDeleteConfirmation.id));
+    resetConfirmationState();
+  };
+
+  const handleFreezeSubcategory = (subcategory) => {
+    setShowFreezeConfirmation(subcategory);
+  };
+
+  const confirmFreezeSubcategory = () => {
+    setSubcategories(subcategories.map(sub => 
+      sub.id === showFreezeConfirmation.id ? { ...sub, isFrozen: true } : sub
+    ));
+    resetConfirmationState();
+  };
+
+  const handleUnfreezeSubcategory = (subcategory) => {
+    setShowUnfreezeConfirmation(subcategory);
+  };
+
+  const confirmUnfreezeSubcategory = () => {
+    setSubcategories(subcategories.map(sub => 
+      sub.id === showUnfreezeConfirmation.id ? { ...sub, isFrozen: false } : sub
+    ));
+    resetConfirmationState();
+  };
+
+  const handleToggleHidden = (subcategoryId) => {
+    setSubcategories(subcategories.map(sub => 
+      sub.id === subcategoryId ? { ...sub, isHidden: !sub.isHidden } : sub
+    ));
+  };
+
+  const handleSubcategoryClick = (subcategory) => {
+    if (subcategory.isFrozen || selectedCategory?.isFrozen) return;
+    
+    if (selectedSubcategoryInfo?.id === subcategory.id) {
+      onSubcategorySelect(subcategory);
+    } else {
+      setSelectedSubcategoryInfo(subcategory);
     }
   };
 
-  const cancelForm = () => {
+  const resetForm = () => {
     setShowAddForm(false);
     setEditingSubcategory(null);
-    setNewSubcategory({ 
-      name: '', 
-      description: '', 
-      cycle: 1, 
-      requiredCourses: 1, 
-      color: selectedCategory.color 
+    setNewSubcategory({
+      name: '',
+      description: '',
+      cycle: 1,
+      requiredCourses: 1,
+      color: selectedCategory?.color || '#8b5cf6',
+      isHidden: false
     });
   };
 
-  const groupedByCycle = selectedCategory.cycleAssociation 
-    ? subcategories.reduce((acc, sub) => {
-        const cycle = sub.cycle;
-        if (!acc[cycle]) acc[cycle] = [];
-        acc[cycle].push(sub);
-        return acc;
-      }, {})
-    : { 'all': filteredSubcategories };
+  // Filtros
+  const filteredSubcategories = subcategories.filter(subcategory =>
+    subcategory.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    subcategory.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Si la categoría padre está congelada
+  if (selectedCategory?.isFrozen) {
+    return (
+      <div style={{ padding: '32px' }}>
+        <div style={{
+          textAlign: 'center',
+          padding: '64px 24px',
+          background: 'rgba(100, 116, 139, 0.1)',
+          borderRadius: '16px',
+          border: '1px solid rgba(100, 116, 139, 0.3)'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>❄️</div>
+          <h3 style={{ fontSize: '24px', marginBottom: '8px', color: '#64748b' }}>
+            Categoría Congelada
+          </h3>
+          <p style={{ fontSize: '16px', color: '#94a3b8', marginBottom: '24px' }}>
+            La categoría "{selectedCategory.name}" está congelada. No se pueden realizar acciones en sus subcategorías.
+          </p>
+          <button
+            onClick={onBack}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '8px',
+              border: 'none',
+              background: 'rgba(148, 163, 184, 0.3)',
+              color: '#cbd5e1',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            ← Volver a Categorías
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '32px' }}>
@@ -153,7 +273,7 @@ const SubcategoriesTab = ({ selectedCategoryId = 2 }) => {
         color: '#94a3b8'
       }}>
         <button
-          onClick={() => console.log('Volver a categorías')} // En producción: onBackToCategories()
+          onClick={onBack}
           style={{
             background: 'none',
             border: 'none',
@@ -175,10 +295,10 @@ const SubcategoriesTab = ({ selectedCategoryId = 2 }) => {
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: selectedCategory.color
+            background: selectedCategory?.color || '#8b5cf6'
           }} />
           <span style={{ color: 'white', fontWeight: '500' }}>
-            {selectedCategory.name}
+            {selectedCategory?.name || 'Categoría no seleccionada'}
           </span>
         </div>
       </div>
@@ -196,16 +316,16 @@ const SubcategoriesTab = ({ selectedCategoryId = 2 }) => {
           <h2 style={{
             fontSize: '28px',
             fontWeight: 'bold',
-            background: `linear-gradient(to right, ${selectedCategory.color}, ${selectedCategory.color}80)`,
+            background: `linear-gradient(to right, ${selectedCategory?.color || '#8b5cf6'}, ${selectedCategory?.color || '#8b5cf6'}80)`,
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             margin: 0,
             marginBottom: '8px'
           }}>
-            📁 Subcategorías de {selectedCategory.name}
+            📁 Subcategorías de {selectedCategory?.name}
           </h2>
           <p style={{ color: '#94a3b8', margin: 0, fontSize: '16px' }}>
-            {selectedCategory.description}
+            {selectedCategory?.description}
           </p>
         </div>
         
@@ -215,7 +335,7 @@ const SubcategoriesTab = ({ selectedCategoryId = 2 }) => {
             padding: '12px 24px',
             borderRadius: '12px',
             border: 'none',
-            background: `linear-gradient(135deg, ${selectedCategory.color}, ${selectedCategory.color}80)`,
+            background: `linear-gradient(135deg, ${selectedCategory?.color || '#8b5cf6'}, ${selectedCategory?.color || '#8b5cf6'}80)`,
             color: 'white',
             cursor: 'pointer',
             fontSize: '16px',
@@ -224,7 +344,7 @@ const SubcategoriesTab = ({ selectedCategoryId = 2 }) => {
             alignItems: 'center',
             gap: '8px',
             transition: 'all 0.3s ease',
-            boxShadow: `0 4px 15px ${selectedCategory.color}30`
+            boxShadow: `0 4px 15px ${selectedCategory?.color || '#8b5cf6'}30`
           }}
           onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
           onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
@@ -235,10 +355,7 @@ const SubcategoriesTab = ({ selectedCategoryId = 2 }) => {
       </div>
 
       {/* Search Bar */}
-      <div style={{
-        marginBottom: '24px',
-        position: 'relative'
-      }}>
+      <div style={{ marginBottom: '24px' }}>
         <input
           type="text"
           placeholder="🔍 Buscar subcategorías..."
@@ -256,289 +373,135 @@ const SubcategoriesTab = ({ selectedCategoryId = 2 }) => {
             outline: 'none',
             transition: 'all 0.3s ease'
           }}
-          onFocus={(e) => e.currentTarget.style.borderColor = selectedCategory.color}
+          onFocus={(e) => e.currentTarget.style.borderColor = selectedCategory?.color || '#8b5cf6'}
           onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)'}
         />
       </div>
 
       {/* Add/Edit Form */}
       {showAddForm && (
-        <div style={{
-          background: `linear-gradient(135deg, ${selectedCategory.color}15 0%, rgba(30, 41, 59, 0.8) 100%)`,
-          borderRadius: '16px',
-          border: `1px solid ${selectedCategory.color}40`,
-          padding: '24px',
-          marginBottom: '24px',
-          backdropFilter: 'blur(10px)'
-        }}>
-          <h3 style={{
-            color: '#67e8f9',
-            marginBottom: '20px',
-            fontSize: '20px',
-            fontWeight: '600'
-          }}>
-            {editingSubcategory ? '✏️ Editar Subcategoría' : '✨ Nueva Subcategoría'}
-          </h3>
-          
+        <SubcategoryForm
+          newSubcategory={newSubcategory}
+          setNewSubcategory={setNewSubcategory}
+          selectedCategory={selectedCategory}
+          editingSubcategory={editingSubcategory}
+          onSave={editingSubcategory ? handleUpdateSubcategory : handleAddSubcategory}
+          onCancel={resetForm}
+        />
+      )}
+
+      {/* Main Content Layout */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: selectedSubcategoryInfo ? '1fr 400px' : '1fr',
+        gap: '32px'
+      }}>
+        
+        {/* Subcategories Grid */}
+        <div>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '20px',
-            marginBottom: '20px'
+            gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+            gap: '24px'
           }}>
-            <div>
-              <label style={{ color: '#cbd5e1', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
-                Nombre de la subcategoría
-              </label>
-              <input
-                type="text"
-                value={newSubcategory.name}
-                onChange={(e) => setNewSubcategory({...newSubcategory, name: e.target.value})}
-                placeholder="Ej: Electivo de Humanidades 1, Electivo de IA..."
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(148, 163, 184, 0.3)',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  color: 'white',
-                  fontSize: '14px',
-                  outline: 'none'
-                }}
+            {filteredSubcategories.map((subcategory) => (
+              <SubcategoryCard
+                key={subcategory.id}
+                subcategory={subcategory}
+                selectedCategory={selectedCategory}
+                isSelected={selectedSubcategoryInfo?.id === subcategory.id}
+                onSelect={() => handleSubcategoryClick(subcategory)}
+                onEdit={() => handleEditSubcategory(subcategory)}
+                onDelete={() => handleDeleteSubcategory(subcategory)}
+                onFreeze={() => handleFreezeSubcategory(subcategory)}
+                onUnfreeze={() => handleUnfreezeSubcategory(subcategory)}
+                onToggleHidden={() => handleToggleHidden(subcategory.id)}
+                getStatusColor={getStatusColor}
+                getStatusIcon={getStatusIcon}
               />
-            </div>
-            
-            {selectedCategory.cycleAssociation && (
-              <div>
-                <label style={{ color: '#cbd5e1', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
-                  Ciclo asociado
-                </label>
-                <select
-                  value={newSubcategory.cycle}
-                  onChange={(e) => setNewSubcategory({...newSubcategory, cycle: parseInt(e.target.value)})}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(148, 163, 184, 0.3)',
-                    background: 'rgba(15, 23, 42, 0.6)',
-                    color: 'white',
-                    fontSize: '14px',
-                    outline: 'none'
-                  }}
-                >
-                  {availableCycles.map(cycle => (
-                    <option key={cycle} value={cycle}>Ciclo {cycle}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            ))}
+          </div>
 
-            <div>
-              <label style={{ color: '#cbd5e1', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
-                Cursos requeridos
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={newSubcategory.requiredCourses}
-                onChange={(e) => setNewSubcategory({...newSubcategory, requiredCourses: parseInt(e.target.value)})}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(148, 163, 184, 0.3)',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  color: 'white',
-                  fontSize: '14px',
-                  outline: 'none'
-                }}
-              />
-              <p style={{ 
-                color: '#94a3b8', 
-                fontSize: '12px', 
-                margin: '4px 0 0 0',
-                fontStyle: 'italic'
-              }}>
-                Número de cursos que el estudiante debe aprobar de esta subcategoría
+          {filteredSubcategories.length === 0 && (
+            <div style={{
+              textAlign: 'center',
+              padding: '64px 24px',
+              color: '#94a3b8'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📁</div>
+              <h3 style={{ fontSize: '20px', marginBottom: '8px' }}>
+                No se encontraron subcategorías
+              </h3>
+              <p style={{ fontSize: '16px' }}>
+                {searchTerm ? 'Intenta con otros términos de búsqueda' : 'Comienza creando tu primera subcategoría'}
               </p>
             </div>
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ color: '#cbd5e1', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
-              Descripción
-            </label>
-            <textarea
-              value={newSubcategory.description}
-              onChange={(e) => setNewSubcategory({...newSubcategory, description: e.target.value})}
-              placeholder="Describe los cursos que abarca esta subcategoría y su objetivo académico..."
-              rows={3}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                border: '1px solid rgba(148, 163, 184, 0.3)',
-                background: 'rgba(15, 23, 42, 0.6)',
-                color: 'white',
-                fontSize: '14px',
-                outline: 'none',
-                resize: 'vertical',
-                minHeight: '80px'
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-            <button
-              onClick={cancelForm}
-              style={{
-                padding: '10px 20px',
-                borderRadius: '8px',
-                border: '1px solid rgba(148, 163, 184, 0.3)',
-                background: 'transparent',
-                color: '#94a3b8',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={editingSubcategory ? handleUpdateSubcategory : handleAddSubcategory}
-              style={{
-                padding: '10px 20px',
-                borderRadius: '8px',
-                border: 'none',
-                background: `linear-gradient(135deg, ${selectedCategory.color}, ${selectedCategory.color}80)`,
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}
-            >
-              {editingSubcategory ? 'Actualizar' : 'Crear'} Subcategoría
-            </button>
-          </div>
+          )}
         </div>
-      )}
 
-      {/* Subcategories Content */}
-      {selectedCategory.cycleAssociation ? (
-        // Vista agrupada por ciclos
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-          {Object.entries(groupedByCycle)
-            .sort(([a], [b]) => parseInt(a) - parseInt(b))
-            .map(([cycle, subcategoriesInCycle]) => (
-            <div key={cycle}>
-              <h3 style={{
-                color: selectedCategory.color,
-                fontSize: '20px',
-                fontWeight: '600',
-                marginBottom: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px'
-              }}>
-                <span style={{
-                  padding: '6px 12px',
-                  borderRadius: '20px',
-                  background: `${selectedCategory.color}20`,
-                  fontSize: '14px'
-                }}>
-                  Ciclo {cycle}
-                </span>
-                <span style={{ color: '#94a3b8', fontSize: '14px', fontWeight: '400' }}>
-                  {subcategoriesInCycle.length} subcategoría{subcategoriesInCycle.length !== 1 ? 's' : ''}
-                </span>
-              </h3>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                gap: '20px'
-              }}>
-                {subcategoriesInCycle.map((subcategory) => (
-                  <SubcategoryCard 
-                    key={subcategory.id}
-                    subcategory={subcategory}
-                    selectedCategory={selectedCategory}
-                    onEdit={handleEditSubcategory}
-                    onDelete={handleDeleteSubcategory}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        // Vista de grid simple
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-          gap: '24px'
-        }}>
-          {filteredSubcategories.map((subcategory) => (
-            <SubcategoryCard 
-              key={subcategory.id}
-              subcategory={subcategory}
-              selectedCategory={selectedCategory}
-              onEdit={handleEditSubcategory}
-              onDelete={handleDeleteSubcategory}
-            />
-          ))}
-        </div>
-      )}
+        {/* Subcategory Details Panel */}
+        {selectedSubcategoryInfo && (
+          <SubcategoryDetailsPanel
+            subcategory={selectedSubcategoryInfo}
+            courses={coursesBySubcategory[selectedSubcategoryInfo.id] || []}
+            selectedCategory={selectedCategory}
+            onClose={() => setSelectedSubcategoryInfo(null)}
+            onNavigateToCourses={() => onSubcategorySelect(selectedSubcategoryInfo)}
+            getStatusColor={getStatusColor}
+          />
+        )}
+      </div>
 
-      {filteredSubcategories.length === 0 && (
-        <div style={{
-          textAlign: 'center',
-          padding: '64px 24px',
-          color: '#94a3b8'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>📁</div>
-          <h3 style={{ fontSize: '20px', marginBottom: '8px' }}>
-            No se encontraron subcategorías
-          </h3>
-          <p style={{ fontSize: '16px' }}>
-            {searchTerm ? 'Intenta con otros términos de búsqueda' : 'Comienza creando tu primera subcategoría'}
-          </p>
-        </div>
+      {/* Confirmation Modals */}
+      {(showFreezeConfirmation || showUnfreezeConfirmation || showDeleteConfirmation) && (
+        <ConfirmationModal
+          type={showFreezeConfirmation ? 'freeze' : showUnfreezeConfirmation ? 'unfreeze' : 'delete'}
+          item={showFreezeConfirmation || showUnfreezeConfirmation || showDeleteConfirmation}
+          timer={confirmationTimer}
+          canConfirm={canConfirm}
+          onConfirm={showFreezeConfirmation ? confirmFreezeSubcategory : showUnfreezeConfirmation ? confirmUnfreezeSubcategory : confirmDeleteSubcategory}
+          onCancel={resetConfirmationState}
+        />
       )}
     </div>
   );
 };
 
-// Componente reutilizable para las cards de subcategorías
-const SubcategoryCard = ({ subcategory, selectedCategory, onEdit, onDelete }) => {
+const SubcategoryCard = ({ 
+  subcategory, selectedCategory, isSelected, onSelect, onEdit, onDelete, onFreeze, onUnfreeze, onToggleHidden,
+  getStatusColor, getStatusIcon 
+}) => {
+  const canDelete = subcategory.coursesCount === 0;
+  const isDisabled = subcategory.isFrozen || selectedCategory?.isFrozen;
+  
   return (
     <div
-      onClick={() => {
-        // Aquí navegaremos a la gestión de cursos de esta subcategoría
-        console.log('Navegando a cursos de:', subcategory.name);
-        // En el futuro: onSubcategoryClick(subcategory.id)
-      }}
+      onClick={onSelect}
       style={{
         background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%)',
         borderRadius: '16px',
-        border: `1px solid ${selectedCategory.color}60`,
+        border: `2px solid ${isSelected ? getStatusColor(subcategory) : `${getStatusColor(subcategory)}60`}`,
         padding: '24px',
         transition: 'all 0.3s ease',
         backdropFilter: 'blur(10px)',
         position: 'relative',
         overflow: 'hidden',
-        cursor: 'pointer'
+        cursor: isDisabled ? 'not-allowed' : 'pointer',
+        opacity: isDisabled ? 0.7 : 1,
+        transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+        boxShadow: isSelected ? `0 8px 30px ${getStatusColor(subcategory)}40` : 'none'
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-4px)';
-        e.currentTarget.style.boxShadow = `0 12px 40px ${selectedCategory.color}40`;
-        e.currentTarget.style.borderColor = `${selectedCategory.color}80`;
+        if (!isDisabled) {
+          e.currentTarget.style.transform = isSelected ? 'scale(1.02)' : 'translateY(-4px)';
+          e.currentTarget.style.boxShadow = `0 12px 40px ${getStatusColor(subcategory)}40`;
+        }
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = 'none';
-        e.currentTarget.style.borderColor = `${selectedCategory.color}60`;
+        if (!isDisabled) {
+          e.currentTarget.style.transform = isSelected ? 'scale(1.02)' : 'translateY(0)';
+          e.currentTarget.style.boxShadow = isSelected ? `0 8px 30px ${getStatusColor(subcategory)}40` : 'none';
+        }
       }}
     >
       {/* Color accent bar */}
@@ -548,8 +511,18 @@ const SubcategoryCard = ({ subcategory, selectedCategory, onEdit, onDelete }) =>
         left: 0,
         right: 0,
         height: '4px',
-        background: `linear-gradient(90deg, ${selectedCategory.color}, ${selectedCategory.color}80)`
+        background: `linear-gradient(90deg, ${getStatusColor(subcategory)}, ${getStatusColor(subcategory)}80)`
       }} />
+      
+      {/* Status indicator */}
+      <div style={{
+        position: 'absolute',
+        top: '12px',
+        right: '12px',
+        fontSize: '20px'
+      }}>
+        {getStatusIcon(subcategory)}
+      </div>
       
       <div style={{
         display: 'flex',
@@ -566,8 +539,8 @@ const SubcategoryCard = ({ subcategory, selectedCategory, onEdit, onDelete }) =>
             width: '12px',
             height: '12px',
             borderRadius: '50%',
-            background: selectedCategory.color,
-            boxShadow: `0 0 10px ${selectedCategory.color}60`
+            background: getStatusColor(subcategory),
+            boxShadow: `0 0 10px ${getStatusColor(subcategory)}60`
           }} />
           <h3 style={{
             color: 'white',
@@ -577,56 +550,6 @@ const SubcategoryCard = ({ subcategory, selectedCategory, onEdit, onDelete }) =>
           }}>
             {subcategory.name}
           </h3>
-        </div>
-        
-        <div style={{
-          display: 'flex',
-          gap: '8px'
-        }}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(subcategory);
-            }}
-            style={{
-              padding: '6px 12px',
-              borderRadius: '6px',
-              border: 'none',
-              background: 'rgba(16, 185, 129, 0.2)',
-              color: '#10b981',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.3)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)'}
-          >
-            ✏️ Editar
-          </button>
-          {subcategory.coursesCount === 0 && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(subcategory.id);
-              }}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                border: 'none',
-                background: 'rgba(239, 68, 68, 0.2)',
-                color: '#ef4444',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
-            >
-              🗑️ Eliminar
-            </button>
-          )}
         </div>
       </div>
 
@@ -639,6 +562,118 @@ const SubcategoryCard = ({ subcategory, selectedCategory, onEdit, onDelete }) =>
       }}>
         {subcategory.description}
       </p>
+
+      {/* Action Buttons */}
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        flexWrap: 'wrap',
+        marginBottom: '16px'
+      }}>
+        {!isDisabled && (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(subcategory);
+              }}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                background: 'rgba(16, 185, 129, 0.2)',
+                color: '#10b981',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '500',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              ✏️ Editar
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onFreeze(subcategory);
+              }}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                background: 'rgba(100, 116, 139, 0.2)',
+                color: '#64748b',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '500'
+              }}
+            >
+              ❄️ Congelar
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleHidden(subcategory.id);
+              }}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                background: subcategory.isHidden ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                color: subcategory.isHidden ? '#10b981' : '#f59e0b',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '500'
+              }}
+            >
+              {subcategory.isHidden ? '👁️ Mostrar' : '🙈 Ocultar'}
+            </button>
+          </>
+        )}
+
+        {subcategory.isFrozen && !selectedCategory?.isFrozen && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onUnfreeze(subcategory);
+            }}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              background: 'rgba(6, 182, 212, 0.2)',
+              color: '#06b6d4',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: '500'
+            }}
+          >
+            🔥 Descongelar
+          </button>
+        )}
+
+        {canDelete && !isDisabled && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(subcategory);
+            }}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              background: 'rgba(239, 68, 68, 0.2)',
+              color: '#ef4444',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: '500'
+            }}
+          >
+            🗑️ Eliminar
+          </button>
+        )}
+      </div>
 
       <div style={{
         display: 'flex',
@@ -659,7 +694,7 @@ const SubcategoryCard = ({ subcategory, selectedCategory, onEdit, onDelete }) =>
             fontSize: '14px'
           }}>
             <span>📚</span>
-            <span style={{ fontWeight: '600', color: selectedCategory.color }}>
+            <span style={{ fontWeight: '600', color: getStatusColor(subcategory) }}>
               {subcategory.coursesCount}
             </span>
             <span>cursos</span>
@@ -680,12 +715,12 @@ const SubcategoryCard = ({ subcategory, selectedCategory, onEdit, onDelete }) =>
           </div>
         </div>
         
-        {selectedCategory.cycleAssociation && (
+        {selectedCategory?.cycleAssociation && (
           <div style={{
             padding: '4px 8px',
             borderRadius: '12px',
-            background: `${selectedCategory.color}20`,
-            color: selectedCategory.color,
+            background: `${getStatusColor(subcategory)}20`,
+            color: getStatusColor(subcategory),
             fontSize: '12px',
             fontWeight: '600'
           }}>
@@ -694,7 +729,7 @@ const SubcategoryCard = ({ subcategory, selectedCategory, onEdit, onDelete }) =>
         )}
       </div>
 
-      {subcategory.coursesCount > 0 && (
+      {!canDelete && !isDisabled && (
         <div style={{
           marginTop: '12px',
           padding: '8px 12px',
@@ -711,19 +746,765 @@ const SubcategoryCard = ({ subcategory, selectedCategory, onEdit, onDelete }) =>
         </div>
       )}
 
-      {/* Indicador visual de que es clickeable */}
-      <div style={{
-        position: 'absolute',
-        bottom: '12px',
-        right: '12px',
-        color: selectedCategory.color,
-        fontSize: '16px',
-        opacity: 0.6
-      }}>
-        →
+      {/* Selection indicator */}
+      {isSelected && (
+        <div style={{
+          position: 'absolute',
+          bottom: '12px',
+          right: '12px',
+          color: getStatusColor(subcategory),
+          fontSize: '16px',
+          animation: 'pulse 2s infinite'
+        }}>
+          ✨ Seleccionada
+        </div>
+      )}
+
+      {/* Click indicator for enabled subcategories */}
+      {!isDisabled && !isSelected && (
+        <div style={{
+          position: 'absolute',
+          bottom: '12px',
+          right: '12px',
+          color: getStatusColor(subcategory),
+          fontSize: '16px',
+          opacity: 0.6
+        }}>
+          👆 Clic para ver detalles
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Componente para el panel de detalles de subcategoría
+const SubcategoryDetailsPanel = ({ subcategory, courses, selectedCategory, onClose, onNavigateToCourses, getStatusColor }) => (
+  <div style={{
+    background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%)',
+    borderRadius: '16px',
+    border: `1px solid ${getStatusColor(subcategory)}60`,
+    padding: '24px',
+    height: 'fit-content',
+    position: 'sticky',
+    top: '20px'
+  }}>
+    {/* Header */}
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: '20px'
+    }}>
+      <div>
+        <h3 style={{
+          color: getStatusColor(subcategory),
+          fontSize: '20px',
+          fontWeight: '700',
+          margin: 0,
+          marginBottom: '8px'
+        }}>
+          📁 {subcategory.name}
+        </h3>
+        <p style={{
+          color: '#94a3b8',
+          fontSize: '14px',
+          margin: 0,
+          lineHeight: '1.4'
+        }}>
+          {subcategory.description}
+        </p>
       </div>
+      
+      <button
+        onClick={onClose}
+        style={{
+          background: 'rgba(148, 163, 184, 0.2)',
+          border: 'none',
+          borderRadius: '6px',
+          color: '#94a3b8',
+          cursor: 'pointer',
+          fontSize: '14px',
+          padding: '6px 10px',
+          fontWeight: '500'
+        }}
+      >
+        ✕
+      </button>
+    </div>
+
+    {/* Status Info */}
+    <div style={{
+      display: 'flex',
+      gap: '12px',
+      marginBottom: '20px',
+      flexWrap: 'wrap'
+    }}>
+      <span style={{
+        padding: '4px 8px',
+        borderRadius: '12px',
+        background: `${getStatusColor(subcategory)}20`,
+        color: getStatusColor(subcategory),
+        fontSize: '12px',
+        fontWeight: '600'
+      }}>
+        {subcategory.isFrozen || selectedCategory?.isFrozen ? '❄️ Congelada' : subcategory.isHidden ? '🙈 Oculta' : '✅ Activa'}
+      </span>
+      
+      {selectedCategory?.cycleAssociation && (
+        <span style={{
+          padding: '4px 8px',
+          borderRadius: '12px',
+          background: 'rgba(148, 163, 184, 0.2)',
+          color: '#94a3b8',
+          fontSize: '12px',
+          fontWeight: '600'
+        }}>
+          📍 Ciclo {subcategory.cycle}
+        </span>
+      )}
+
+      <span style={{
+        padding: '4px 8px',
+        borderRadius: '12px',
+        background: 'rgba(16, 185, 129, 0.2)',
+        color: '#10b981',
+        fontSize: '12px',
+        fontWeight: '600'
+      }}>
+        ✅ {subcategory.requiredCourses} requerido{subcategory.requiredCourses !== 1 ? 's' : ''}
+      </span>
+    </div>
+
+    {/* Statistics */}
+    <div style={{
+      padding: '16px',
+      borderRadius: '8px',
+      background: 'rgba(30, 41, 59, 0.6)',
+      textAlign: 'center',
+      marginBottom: '24px'
+    }}>
+      <div style={{
+        fontSize: '24px',
+        fontWeight: '700',
+        color: getStatusColor(subcategory),
+        marginBottom: '4px'
+      }}>
+        {subcategory.coursesCount}
+      </div>
+      <div style={{
+        fontSize: '14px',
+        color: '#94a3b8'
+      }}>
+        Cursos disponibles
+      </div>
+    </div>
+
+    {/* Courses List */}
+    <div style={{ marginBottom: '20px' }}>
+      <h4 style={{
+        color: '#cbd5e1',
+        fontSize: '16px',
+        fontWeight: '600',
+        marginBottom: '12px'
+      }}>
+        📚 Cursos
+      </h4>
+      
+      {courses.length > 0 ? (
+        <div style={{
+          maxHeight: '250px',
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px'
+        }}>
+          {courses.map(course => (
+            <div
+              key={course.id}
+              style={{
+                padding: '12px',
+                borderRadius: '8px',
+                background: 'rgba(30, 41, 59, 0.4)',
+                border: `1px solid ${getStatusColor(subcategory)}30`,
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(30, 41, 59, 0.6)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(30, 41, 59, 0.4)'}
+            >
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                marginBottom: '6px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <span style={{
+                    color: getStatusColor(subcategory),
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    background: `${getStatusColor(subcategory)}20`
+                  }}>
+                    {course.code}
+                  </span>
+                  <span style={{
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    background: course.isActive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                    color: course.isActive ? '#10b981' : '#ef4444',
+                    fontSize: '10px',
+                    fontWeight: '600'
+                  }}>
+                    {course.isActive ? 'ACTIVO' : 'INACTIVO'}
+                  </span>
+                </div>
+                <span style={{
+                  color: '#94a3b8',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  {course.credits} créditos
+                </span>
+              </div>
+              <div style={{
+                color: '#cbd5e1',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}>
+                {course.name}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{
+          padding: '20px',
+          textAlign: 'center',
+          color: '#94a3b8',
+          fontSize: '14px',
+          fontStyle: 'italic'
+        }}>
+          No hay cursos registrados
+        </div>
+      )}
+    </div>
+
+    {/* Actions */}
+    <div style={{
+      display: 'flex',
+      gap: '12px',
+      flexDirection: 'column'
+    }}>
+      <button
+        onClick={onNavigateToCourses}
+        disabled={subcategory.isFrozen || selectedCategory?.isFrozen}
+        style={{
+          padding: '12px 20px',
+          borderRadius: '8px',
+          border: 'none',
+          background: (subcategory.isFrozen || selectedCategory?.isFrozen)
+            ? 'rgba(148, 163, 184, 0.3)' 
+            : `linear-gradient(135deg, ${getStatusColor(subcategory)}, ${getStatusColor(subcategory)}80)`,
+          color: 'white',
+          cursor: (subcategory.isFrozen || selectedCategory?.isFrozen) ? 'not-allowed' : 'pointer',
+          fontSize: '14px',
+          fontWeight: '600',
+          opacity: (subcategory.isFrozen || selectedCategory?.isFrozen) ? 0.5 : 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px'
+        }}
+      >
+        <span>📚</span>
+        Ver Cursos
+      </button>
+      
+      {(subcategory.isFrozen || selectedCategory?.isFrozen) && (
+        <div style={{
+          padding: '8px 12px',
+          borderRadius: '6px',
+          background: 'rgba(100, 116, 139, 0.2)',
+          color: '#64748b',
+          fontSize: '12px',
+          textAlign: 'center',
+          fontStyle: 'italic'
+        }}>
+          ❄️ Subcategoría congelada - No se pueden realizar acciones
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+// Componente para modales de confirmación
+const ConfirmationModal = ({ type, item, itemType, timer, canConfirm, onConfirm, onCancel }) => {
+  const getModalConfig = () => {
+    switch (type) {
+      case 'freeze':
+        return {
+          title: `❄️ Congelar ${itemType}`,
+          message: `¿Estás seguro de que deseas congelar la ${itemType} "${item.name}"?`,
+          warning: `Esta acción congelará en cadena todos los cursos y horarios asociados a esta ${itemType}. No se podrán realizar acciones de edición hasta descongelar.`,
+          confirmText: 'Congelar',
+          color: '#64748b'
+        };
+      case 'unfreeze':
+        return {
+          title: `🔥 Descongelar ${itemType}`,
+          message: `¿Estás seguro de que deseas descongelar la ${itemType} "${item.name}"?`,
+          warning: `Esta acción descongelará en cadena todos los cursos y horarios asociados a esta ${itemType}.`,
+          confirmText: 'Descongelar',
+          color: '#06b6d4'
+        };
+      case 'delete':
+        return {
+          title: `🗑️ Eliminar ${itemType}`,
+          message: `¿Estás seguro de que deseas eliminar la ${itemType} "${item.name}"?`,
+          warning: `Esta acción es irreversible. La ${itemType} será eliminada permanentemente.`,
+          confirmText: 'Eliminar',
+          color: '#ef4444'
+        };
+      default:
+        return {};
+    }
+  };
+
+  const config = getModalConfig();
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0, 0, 0, 0.8)',
+      backdropFilter: 'blur(8px)',
+      zIndex: 1000,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px'
+    }}>
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%)',
+        borderRadius: '20px',
+        border: `2px solid ${config.color}60`,
+        padding: '32px',
+        maxWidth: '500px',
+        width: '100%',
+        position: 'relative',
+        animation: 'modalSlideIn 0.3s ease-out'
+      }}>
+        {/* Animated border */}
+        <div style={{
+          position: 'absolute',
+          top: '-2px',
+          left: '-2px',
+          right: '-2px',
+          bottom: '-2px',
+          borderRadius: '20px',
+          background: `linear-gradient(45deg, ${config.color}, transparent, ${config.color})`,
+          zIndex: -1,
+          animation: 'borderGlow 2s linear infinite'
+        }} />
+
+        <h3 style={{
+          color: config.color,
+          fontSize: '24px',
+          fontWeight: '700',
+          marginBottom: '16px',
+          textAlign: 'center'
+        }}>
+          {config.title}
+        </h3>
+
+        <p style={{
+          color: '#cbd5e1',
+          fontSize: '16px',
+          lineHeight: '1.5',
+          marginBottom: '16px',
+          textAlign: 'center'
+        }}>
+          {config.message}
+        </p>
+
+        <div style={{
+          padding: '16px',
+          borderRadius: '12px',
+          background: `${config.color}15`,
+          border: `1px solid ${config.color}30`,
+          marginBottom: '24px'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px'
+          }}>
+            <span style={{
+              fontSize: '20px',
+              animation: 'pulse 2s infinite'
+            }}>
+              ⚠️
+            </span>
+            <p style={{
+              color: '#fbbf24',
+              fontSize: '14px',
+              lineHeight: '1.4',
+              margin: 0
+            }}>
+              {config.warning}
+            </p>
+          </div>
+        </div>
+
+        {/* Timer Circle */}
+        {timer > 0 && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '24px'
+          }}>
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              border: `4px solid ${config.color}30`,
+              borderTop: `4px solid ${config.color}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              animation: 'spin 1s linear infinite',
+              position: 'relative'
+            }}>
+              <span style={{
+                color: config.color,
+                fontSize: '24px',
+                fontWeight: '700'
+              }}>
+                {timer}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {canConfirm && (
+          <div style={{
+            textAlign: 'center',
+            marginBottom: '20px',
+            color: '#10b981',
+            fontSize: '14px',
+            fontWeight: '600',
+            animation: 'fadeIn 0.5s ease-in'
+          }}>
+            ✅ Ya puedes confirmar la acción
+          </div>
+        )}
+
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          justifyContent: 'center'
+        }}>
+          <button
+            onClick={onCancel}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '8px',
+              border: '1px solid rgba(148, 163, 184, 0.3)',
+              background: 'transparent',
+              color: '#94a3b8',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '600'
+            }}
+          >
+            Cancelar
+          </button>
+          
+          <button
+            onClick={onConfirm}
+            disabled={!canConfirm}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '8px',
+              border: 'none',
+              background: canConfirm 
+                ? `linear-gradient(135deg, ${config.color}, ${config.color}80)` 
+                : 'rgba(148, 163, 184, 0.3)',
+              color: 'white',
+              cursor: canConfirm ? 'pointer' : 'not-allowed',
+              fontSize: '14px',
+              fontWeight: '600',
+              opacity: canConfirm ? 1 : 0.5,
+              transition: 'all 0.3s ease'
+            }}
+          >
+            {config.confirmText}
+          </button>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes modalSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-50px) scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes borderGlow {
+          0%, 100% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1.1);
+          }
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };
 
 export default SubcategoriesTab;
+// Componente para el formulario de subcategorías
+const SubcategoryForm = ({ newSubcategory, setNewSubcategory, selectedCategory, availableCycles, editingSubcategory, onSave, onCancel }) => (
+  <div style={{
+    background: `linear-gradient(135deg, ${selectedCategory?.color || '#8b5cf6'}15 0%, rgba(30, 41, 59, 0.8) 100%)`,
+    borderRadius: '16px',
+    border: `1px solid ${selectedCategory?.color || '#8b5cf6'}40`,
+    padding: '24px',
+    marginBottom: '24px',
+    backdropFilter: 'blur(10px)'
+  }}>
+    <h3 style={{
+      color: '#67e8f9',
+      marginBottom: '20px',
+      fontSize: '20px',
+      fontWeight: '600'
+    }}>
+      {editingSubcategory ? '✏️ Editar Subcategoría' : '✨ Nueva Subcategoría'}
+    </h3>
+    
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+      gap: '20px',
+      marginBottom: '20px'
+    }}>
+      <div>
+        <label style={{ color: '#cbd5e1', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
+          Nombre de la subcategoría
+        </label>
+        <input
+          type="text"
+          value={newSubcategory.name}
+          onChange={(e) => setNewSubcategory({...newSubcategory, name: e.target.value})}
+          placeholder="Ej: Electivo de Humanidades 1, Electivo de IA..."
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            border: '1px solid rgba(148, 163, 184, 0.3)',
+            background: 'rgba(15, 23, 42, 0.6)',
+            color: 'white',
+            fontSize: '14px',
+            outline: 'none'
+          }}
+        />
+      </div>
+      
+      {selectedCategory?.cycleAssociation && (
+        <div>
+          <label style={{ color: '#cbd5e1', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
+            Ciclo asociado
+          </label>
+          <select
+            value={newSubcategory.cycle}
+            onChange={(e) => setNewSubcategory({...newSubcategory, cycle: parseInt(e.target.value)})}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              border: '1px solid rgba(148, 163, 184, 0.3)',
+              background: 'rgba(15, 23, 42, 0.6)',
+              color: 'white',
+              fontSize: '14px',
+              outline: 'none'
+            }}
+          >
+            {availableCycles.map(cycle => (
+              <option key={cycle} value={cycle}>Ciclo {cycle}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div>
+        <label style={{ color: '#cbd5e1', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
+          Cursos requeridos
+        </label>
+        <input
+          type="number"
+          min="1"
+          max="10"
+          value={newSubcategory.requiredCourses}
+          onChange={(e) => setNewSubcategory({...newSubcategory, requiredCourses: parseInt(e.target.value)})}
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            border: '1px solid rgba(148, 163, 184, 0.3)',
+            background: 'rgba(15, 23, 42, 0.6)',
+            color: 'white',
+            fontSize: '14px',
+            outline: 'none'
+          }}
+        />
+        <p style={{ 
+          color: '#94a3b8', 
+          fontSize: '12px', 
+          margin: '4px 0 0 0',
+          fontStyle: 'italic'
+        }}>
+          Número de cursos que el estudiante debe aprobar de esta subcategoría
+        </p>
+      </div>
+    </div>
+
+    <div style={{ marginBottom: '20px' }}>
+      <label style={{ color: '#cbd5e1', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
+        Descripción
+      </label>
+      <textarea
+        value={newSubcategory.description}
+        onChange={(e) => setNewSubcategory({...newSubcategory, description: e.target.value})}
+        placeholder="Describe los cursos que abarca esta subcategoría y su objetivo académico..."
+        rows={3}
+        style={{
+          width: '100%',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          border: '1px solid rgba(148, 163, 184, 0.3)',
+          background: 'rgba(15, 23, 42, 0.6)',
+          color: 'white',
+          fontSize: '14px',
+          outline: 'none',
+          resize: 'vertical',
+          minHeight: '80px'
+        }}
+      />
+    </div>
+
+    {/* Visibilidad */}
+    <div style={{ marginBottom: '20px' }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px'
+      }}>
+        <input
+          type="checkbox"
+          id="isHidden"
+          checked={newSubcategory.isHidden}
+          onChange={(e) => setNewSubcategory({...newSubcategory, isHidden: e.target.checked})}
+          style={{
+            width: '18px',
+            height: '18px',
+            accentColor: '#f59e0b',
+            cursor: 'pointer'
+          }}
+        />
+        <label 
+          htmlFor="isHidden"
+          style={{ 
+            color: '#cbd5e1', 
+            fontSize: '14px',
+            cursor: 'pointer',
+            userSelect: 'none'
+          }}
+        >
+          Ocultar subcategoría (no visible para estudiantes)
+        </label>
+      </div>
+      <p style={{ 
+        color: '#94a3b8', 
+        fontSize: '12px', 
+        margin: '4px 0 0 30px',
+        fontStyle: 'italic'
+      }}>
+        {newSubcategory.isHidden 
+          ? 'Los estudiantes no podrán ver esta subcategoría al registrar cursos'
+          : 'La subcategoría será visible para los estudiantes'
+        }
+      </p>
+    </div>
+
+    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+      <button
+        onClick={onCancel}
+        style={{
+          padding: '10px 20px',
+          borderRadius: '8px',
+          border: '1px solid rgba(148, 163, 184, 0.3)',
+          background: 'transparent',
+          color: '#94a3b8',
+          cursor: 'pointer',
+          fontSize: '14px'
+        }}
+      >
+        Cancelar
+      </button>
+      <button
+        onClick={onSave}
+        disabled={!newSubcategory.name.trim()}
+        style={{
+          padding: '10px 20px',
+          borderRadius: '8px',
+          border: 'none',
+          background: !newSubcategory.name.trim() 
+            ? 'rgba(148, 163, 184, 0.3)' 
+            : `linear-gradient(135deg, ${selectedCategory?.color || '#8b5cf6'}, ${selectedCategory?.color || '#8b5cf6'}80)`,
+          color: 'white',
+          cursor: !newSubcategory.name.trim() ? 'not-allowed' : 'pointer',
+          fontSize: '14px',
+          fontWeight: '600',
+          opacity: !newSubcategory.name.trim() ? 0.5 : 1
+        }}
+      >
+        {editingSubcategory ? 'Actualizar' : 'Crear'} Subcategoría
+      </button>
+    </div>
+  </div>
+);

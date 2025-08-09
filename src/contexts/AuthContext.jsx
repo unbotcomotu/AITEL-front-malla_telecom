@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
               email: 'admin@pucp.edu.pe', // Cambiar aquí para probar diferentes roles
               fullName: 'Administrador de Prueba',
               studentCode: '20201234',
-              role: 'student', // 'admin' o 'student'
+              role: 'admin', // 'admin' o 'student'
               isFirstLogin: false // true para probar onboarding
             };
             console.log('✅ Usuario mock creado:', mockUser);

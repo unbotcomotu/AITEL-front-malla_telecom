@@ -12,12 +12,13 @@ import 'reactflow/dist/style.css';
 
 // Simulando imports de los módulos (en tu proyecto real serían imports reales)
 import { initialNodesData, initialEdgesData, PREREQUISITE_TYPES } from '../../data/courseData.js';
+import { cycleData } from '../../data/cycleData.js';
+import { commentsData } from '../../data/commentsData.js';
 import { checkPrerequisites, getCourseStatus } from '../../utils/prerequisiteUtils.js';
 import CourseNode from './CourseNode.jsx';
 import CourseDetailPanel from './CourseDetailPanel.jsx';
 import PrerequisitesPanel from './PrerequisitesPanel.jsx';
 import { useStudentGrades } from '../../hooks/useApi.js';
-
 
 const nodeTypes = { 
   courseNode: CourseNode 
@@ -28,6 +29,9 @@ function CurriculumView() {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   
+  // Estado del sistema académico actual
+  const currentSemester = '2025-2'; // Esto vendría del contexto/backend
+  
   // Simulamos notas del estudiante (esto vendría del backend via useStudentGrades hook)
   const courseGrades = {
     'c1': 15, // Aprobado con buena nota
@@ -36,17 +40,25 @@ function CurriculumView() {
     'f1': 7   // Desaprobado
   };
   
+  // Cursos que está llevando actualmente (esto vendría del registro de cursos)
+  const currentCourses = ['c2', 'al', 'f1']; // IDs de cursos en progreso
+  
   const approvedCourses = Object.keys(courseGrades).filter(courseId => courseGrades[courseId] >= 11);
   
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
     const nodes = initialNodesData.map((node) => {
       const isApproved = approvedCourses.includes(node.id);
+      const isInProgress = currentCourses.includes(node.id);
       const prerequisites = checkPrerequisites(node.id, courseGrades);
       const arePrerequisitesMet = prerequisites.every(p => p.isMet);
       
       let status = 'locked';
+      
+      // Lógica de estados mejorada
       if (isApproved) {
         status = 'approved';
+      } else if (isInProgress) {
+        status = 'in_progress';
       } else if (arePrerequisitesMet || prerequisites.length === 0) {
         status = 'available';
       }
@@ -88,7 +100,7 @@ function CurriculumView() {
           break;
         case PREREQUISITE_TYPES.COREQUISITE:
           strokeColor = '#06b6d4';
-          strokeDasharray = '8,4';
+          strokeDasharray = '8,4'; // Líneas punteadas para correquisitos
           break;
         default:
           strokeColor = '#64748b';
@@ -109,7 +121,7 @@ function CurriculumView() {
     });
 
     return { nodes, edges };
-  }, [approvedCourses, courseGrades]);
+  }, [approvedCourses, courseGrades, currentCourses]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
@@ -120,6 +132,17 @@ function CurriculumView() {
     setIsPanelOpen(false);
     setSelectedCourse(null);
   };
+
+  // Calcular estadísticas del progreso
+  const progressStats = useMemo(() => {
+    const total = initialNodesData.length;
+    const approved = approvedCourses.length;
+    const inProgress = currentCourses.length;
+    const available = nodes.filter(n => n.data.status === 'available').length;
+    const locked = total - approved - inProgress - available;
+    
+    return { total, approved, inProgress, available, locked };
+  }, [approvedCourses, currentCourses, nodes]);
 
   return (
     <div style={{
@@ -142,26 +165,70 @@ function CurriculumView() {
         backdropFilter: 'blur(20px)',
         borderBottom: '1px solid rgba(148, 163, 184, 0.2)'
       }}>
-        <h1 style={{
-          fontSize: '32px',
-          fontWeight: 'bold',
-          background: 'linear-gradient(to right, #06b6d4, #3b82f6, #8b5cf6)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          margin: 0
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: '16px'
         }}>
-          🎓 Malla Curricular
-        </h1>
-        <p style={{ fontSize: '14px', color: '#cbd5e1', marginTop: '4px', margin: '4px 0 16px 0' }}>
-          Ingeniería de Telecomunicaciones - PUCP
-        </p>
+          <div>
+            <h1 style={{
+              fontSize: '32px',
+              fontWeight: 'bold',
+              background: 'linear-gradient(to right, #06b6d4, #3b82f6, #8b5cf6)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              margin: 0
+            }}>
+              🎓 Malla Curricular
+            </h1>
+            <p style={{ fontSize: '14px', color: '#cbd5e1', margin: '4px 0 0 0' }}>
+              Ingeniería de Telecomunicaciones - PUCP
+            </p>
+          </div>
+
+          {/* Información del semestre actual y progreso */}
+          <div style={{
+            display: 'flex',
+            gap: '16px',
+            alignItems: 'center'
+          }}>
+            <div style={{
+              padding: '8px 16px',
+              borderRadius: '12px',
+              background: 'rgba(245, 158, 11, 0.2)',
+              border: '1px solid rgba(245, 158, 11, 0.3)'
+            }}>
+              <div style={{ color: '#fbbf24', fontSize: '12px', fontWeight: '600' }}>
+                📅 SEMESTRE ACTUAL
+              </div>
+              <div style={{ color: '#fbbf24', fontSize: '16px', fontWeight: '700' }}>
+                {currentSemester}
+              </div>
+            </div>
+
+            <div style={{
+              padding: '8px 16px',
+              borderRadius: '12px',
+              background: 'rgba(16, 185, 129, 0.2)',
+              border: '1px solid rgba(16, 185, 129, 0.3)'
+            }}>
+              <div style={{ color: '#10b981', fontSize: '12px', fontWeight: '600' }}>
+                📊 PROGRESO
+              </div>
+              <div style={{ color: '#10b981', fontSize: '16px', fontWeight: '700' }}>
+                {progressStats.approved}/{progressStats.total} ({Math.round((progressStats.approved/progressStats.total)*100)}%)
+              </div>
+            </div>
+          </div>
+        </div>
         
-        {/* Leyenda mejorada */}
+        {/* Leyenda mejorada con nuevo estado */}
         <div style={{ 
           display: 'flex', 
           flexWrap: 'wrap', 
-          gap: '24px', 
+          gap: '20px', 
           fontSize: '12px' 
         }}>
           <div style={{ 
@@ -178,8 +245,30 @@ function CurriculumView() {
               borderRadius: '50%', 
               background: 'linear-gradient(135deg, #10b981, #059669)' 
             }}></div>
-            <span style={{ color: '#34d399', fontWeight: '500' }}>Aprobado</span>
+            <span style={{ color: '#34d399', fontWeight: '500' }}>
+              Aprobado ({progressStats.approved})
+            </span>
           </div>
+
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            padding: '6px 12px', 
+            borderRadius: '20px', 
+            background: 'rgba(245, 158, 11, 0.2)' 
+          }}>
+            <div style={{ 
+              width: '12px', 
+              height: '12px', 
+              borderRadius: '50%', 
+              background: 'linear-gradient(135deg, #f59e0b, #d97706)' 
+            }}></div>
+            <span style={{ color: '#fbbf24', fontWeight: '500' }}>
+              En Progreso ({progressStats.inProgress})
+            </span>
+          </div>
+
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -194,8 +283,11 @@ function CurriculumView() {
               borderRadius: '50%', 
               background: 'linear-gradient(135deg, #06b6d4, #0891b2)' 
             }}></div>
-            <span style={{ color: '#22d3ee', fontWeight: '500' }}>Disponible</span>
+            <span style={{ color: '#22d3ee', fontWeight: '500' }}>
+              Disponible ({progressStats.available})
+            </span>
           </div>
+
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -210,7 +302,9 @@ function CurriculumView() {
               borderRadius: '50%', 
               background: 'linear-gradient(135deg, #475569, #334155)' 
             }}></div>
-            <span style={{ color: '#cbd5e1', fontWeight: '500' }}>Bloqueado</span>
+            <span style={{ color: '#cbd5e1', fontWeight: '500' }}>
+              Bloqueado ({progressStats.locked})
+            </span>
           </div>
           
           {/* Separador */}
@@ -267,7 +361,7 @@ function CurriculumView() {
       </header>
       
       {/* ReactFlow Container */}
-      <div style={{ width: '100%', height: '100%', paddingTop: '128px' }}>
+      <div style={{ width: '100%', height: '100%', paddingTop: '160px' }}>
         <ReactFlowProvider>
           <ReactFlow
             nodes={nodes}
@@ -306,8 +400,8 @@ function CurriculumView() {
             <MiniMap 
               nodeColor={(node) => {
                 if (node.data.status === 'approved') return '#10b981';
-                if (node.data.status === 'available') return '#06b6d4';
                 if (node.data.status === 'in_progress') return '#f59e0b';
+                if (node.data.status === 'available') return '#06b6d4';
                 return '#475569';
               }}
               style={{
@@ -330,6 +424,8 @@ function CurriculumView() {
         onClose={handleClosePanel}
         isOpen={isPanelOpen}
         courseGrades={courseGrades}
+        cycleData={cycleData}
+        commentsData={commentsData}
       />
     </div>
   );
